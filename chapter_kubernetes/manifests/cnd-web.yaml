@@ -8,7 +8,7 @@ metadata:
 spec:
   containers:
   - name: cnd-web-app
-    image: ryuichitakei/cnd-web-app:1.2
+    image: ghcr.io/cloudnativedaysjp/cnd-web-app:1.0
     imagePullPolicy: Always
     ports:
     - containerPort: 8888
@@ -51,7 +51,7 @@ metadata:
 spec:
   containers:
   - name: dummy-app
-    image: ryuichitakei/dummy-app:1.0
+    image: ghcr.io/cloudnativedaysjp/dummy-app:1.0
     imagePullPolicy: Always
     ports:
     - containerPort: 80

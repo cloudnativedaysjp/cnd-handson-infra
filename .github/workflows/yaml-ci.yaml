@@ -21,7 +21,7 @@ jobs:
         uses: stackrox/kube-linter-action@v1.0.6
         id: kube-linter-action-scan
         with:
-          directory: .
+          directory: ./chapter_cicd/apps/
           format: sarif
           output-file: ../results/kube-linter.sarif
         continue-on-error: true

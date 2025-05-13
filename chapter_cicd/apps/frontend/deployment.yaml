@@ -21,22 +21,18 @@ spec:
         app: frontend
     spec:
       containers:
-      - image: #argoproj/rollouts-demo:blue#
+      - image: ghcr.io/cloudnativedaysjp/cnd-handson-app/frontend:latest
         imagePullPolicy: IfNotPresent
         name: frontend
         ports:
         - name: http
-          containerPort: 8080
+          containerPort: 5173
           protocol: TCP
         resources:
           requests:
-            memory: 32Mi
-            cpu: 5m
-          limits:
-            memory: 84Mi
+            memory: 128Mi
             cpu: 100m
-        securityContext:
-          runAsUser: 1000
-          runAsGroup: 2000
-          allowPrivilegeEscalation: false
+          limits:
+            memory: 256Mi
+            cpu: 200m
       terminationGracePeriodSeconds: 15

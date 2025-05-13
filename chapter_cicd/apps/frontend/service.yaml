@@ -9,7 +9,7 @@ spec:
   ports:
   - port: 80
     protocol: TCP
-    targetPort: http
+    targetPort: 5173
     name: http
   selector:
     app: frontend

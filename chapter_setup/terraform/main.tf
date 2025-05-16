@@ -1,3 +1,14 @@
+
+terraform {
+
+  cloud {
+    organization = "cloudnativedaysjp"
+
+    workspaces {
+      name = "cnd-handson-infra"
+    }
+  }
+}
 provider "aws" {
   region = "ap-northeast-1" # 適宜変更
 }

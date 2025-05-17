@@ -8,8 +8,9 @@ terraform {
     }
   }
 }
+
 provider "aws" {
-  region = "ap-northeast-1" # 適宜変更
+  region = "ap-northeast-1"
 }
 
 locals {
@@ -150,16 +151,33 @@ resource "aws_instance" "ubuntu_instance" {
   vpc_security_group_ids      = [aws_security_group.handson_sg.id]
   associate_public_ip_address = true
 
+  root_block_device {
+    volume_size = var.volume_size
+    volume_type = "gp3"
+    delete_on_termination = true
+  }
+
   user_data = <<-EOF
     #!/bin/bash
+    set -eux
     apt-get update
-    apt-get install -y curl vim git unzip gnupg lsb-release ca-certificates dstat jq
+    apt-get install -y \
+    curl vim git unzip gnupg lsb-release ca-certificates dstat jq \
+    apt-transport-https software-properties-common
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-    echo 'deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable' > /etc/apt/sources.list.d/docker.list
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     apt-get update
     apt-get install -y docker-ce docker-ce-cli containerd.io
+    groupadd docker || true
+    usermod -aG docker ubuntu
+    cd /home/ubuntu
+    git clone https://github.com/cloudnativedaysjp/cnd-handson.git
+    git clone https://github.com/cloudnativedaysjp/cnd-handson-app.git
+    git clone https://github.com/cloudnativedaysjp/cnd-handson-infra.git
+    chown -R ubuntu:ubuntu /home/ubuntu
+    echo "ubuntu user groups after usermod:" >> /var/log/user_data_debug.log
+    groups ubuntu >> /var/log/user_data_debug.log
   EOF
-
   tags = {
      Name = "Ubuntu-EC2-student${count.index + 1}"
   }

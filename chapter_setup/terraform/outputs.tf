@@ -31,3 +31,8 @@ output "hosts_file_s3_urls" {
 output "lambda_function_name" {
   value = aws_lambda_function.generate_download_url_lambda.function_name
 }
+
+output "download_url_csv_raw" {
+  value       = local.download_url_csv
+  description = "Download URL CSV content (raw string, same as CSV file content)"
+}

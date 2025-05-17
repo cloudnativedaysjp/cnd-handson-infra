@@ -7,7 +7,7 @@ variable "region" {
 variable "num_students" {
   description = "Number of students for the hands-on lab"
   type        = number
-  default     = 3
+  default     = 1
 }
 
 variable "vpc_cidr_block" {
@@ -55,4 +55,10 @@ variable "handson_ingress_ports" {
   description = "List of ingress ports to allow"
   type        = list(number)
   default     = [22, 80, 443, 8080, 8443, 18080, 18443, 28080, 28443]
+}
+
+variable "ami_name" {
+  description = "AMI Name for Handson Instance"
+  type        = string
+  default     = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
 }

@@ -42,7 +42,7 @@ variable "instance_type" {
 
 variable "s3_bucket_name" {
   description = "S3 bucket name for storing SSH keys"
-  default     = "cnd-handson-bucket-2025"
+  default     = "cnd-handson-bucket"
 }
 
 variable "stage_name" {

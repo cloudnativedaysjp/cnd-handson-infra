@@ -42,7 +42,7 @@ variable "instance_type" {
 
 variable "s3_bucket_name" {
   description = "S3 bucket name for storing SSH keys"
-  default     = "cnd-handson-bucket"
+  default     = "cnd-handson-bucket-2025"
 }
 
 variable "stage_name" {
@@ -58,7 +58,13 @@ variable "handson_ingress_ports" {
 }
 
 variable "ami_name" {
-  description = "AMI Name for Handson Instance"
+  description = "AMI Name for Handson Instances"
   type        = string
   default     = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
+}
+
+variable "volume_size" {
+  description = "volume size for Handson Instances"
+  type        = number
+  default     = 50
 }

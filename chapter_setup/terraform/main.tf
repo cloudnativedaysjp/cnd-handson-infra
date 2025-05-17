@@ -91,6 +91,15 @@ resource "aws_security_group_rule" "handson_ingress" {
   security_group_id = aws_security_group.handson_sg.id
 }
 
+resource "aws_security_group_rule" "handson_egress_all" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1" # all protocols
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.handson_sg.id
+}
+
 # 受講者ごとのSSHキーペアを作成
 resource "tls_private_key" "handson_keys" {
   count     = var.num_students

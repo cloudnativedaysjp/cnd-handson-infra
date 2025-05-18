@@ -3,7 +3,7 @@ rollout.example.com
 blue.example.com
 green.example.com
 app.example.com
-cndw-web.example.com
+cnd-web.example.com
 prometheus.example.com
 grafana.example.com
 jaeger.example.com

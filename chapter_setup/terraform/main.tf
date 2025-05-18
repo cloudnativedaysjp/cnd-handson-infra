@@ -184,13 +184,18 @@ resource "aws_instance" "ubuntu_instance" {
 }
 
 # hostsを生成
+resource "null_resource" "create_generated_hosts_dir" {
+  provisioner "local-exec" {
+    command = "mkdir -p ./generated_hosts"
+  }
+}
+
 resource "null_resource" "generate_hosts" {
   count = length(aws_instance.ubuntu_instance)
 
   provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
     command = <<EOT
-      if [ ${count.index} -eq 0 ]; then mkdir -p ./generated_hosts; fi
-
       vm_ip="${aws_instance.ubuntu_instance[count.index].public_ip}"
       output_file="./generated_hosts/hosts_student${count.index + 1}.txt"
 
@@ -202,7 +207,10 @@ resource "null_resource" "generate_hosts" {
     EOT
   }
 
-  depends_on = [aws_instance.ubuntu_instance]
+  depends_on = [
+    aws_instance.ubuntu_instance,
+    null_resource.create_generated_hosts_dir
+  ]
 }
 
 # Lambda関数コードをZIP化

@@ -1,0 +1,25 @@
+# .terraform directory
+.terraform/
+
+# State files (機密情報を含む可能性がある)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Variable files (機密情報を含む可能性がある)
+*.tfvars
+*.tfvars.json
+
+# Crash log files
+crash.log
+crash.*.log
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Local files
+keys/
+generated_hosts/
+*.zip
+download_urls.csv

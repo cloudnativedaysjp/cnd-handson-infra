@@ -177,6 +177,7 @@ resource "aws_instance" "ubuntu_instance" {
     chown -R ubuntu:ubuntu /home/ubuntu
     echo "ubuntu user groups after usermod:" >> /var/log/user_data_debug.log
     groups ubuntu >> /var/log/user_data_debug.log
+    export HOME=/home/ubuntu
     curl -fsSL https://code-server.dev/install.sh | sh
     mkdir -p /home/ubuntu/.config/code-server
     cat > /home/ubuntu/.config/code-server/config.yaml <<'CONFIG'

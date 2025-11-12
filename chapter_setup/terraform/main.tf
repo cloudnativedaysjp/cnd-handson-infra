@@ -171,6 +171,7 @@ resource "aws_instance" "ubuntu_instance" {
     groupadd docker || true
     usermod -aG docker ubuntu
     cd /home/ubuntu
+    export HOME=/home/ubuntu
     git clone https://github.com/cloudnativedaysjp/cnd-handson.git
     git clone https://github.com/cloudnativedaysjp/cnd-handson-app.git
     git clone https://github.com/cloudnativedaysjp/cnd-handson-infra.git

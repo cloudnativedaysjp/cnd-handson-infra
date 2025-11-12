@@ -177,6 +177,16 @@ resource "aws_instance" "ubuntu_instance" {
     chown -R ubuntu:ubuntu /home/ubuntu
     echo "ubuntu user groups after usermod:" >> /var/log/user_data_debug.log
     groups ubuntu >> /var/log/user_data_debug.log
+    curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/usr/local
+    mkdir -p /home/ubuntu/.config/code-server
+    cat > /home/ubuntu/.config/code-server/config.yaml <<'CONFIG'
+    bind-addr: 0.0.0.0:38080
+    auth: password
+    password: password
+    cert: false
+    CONFIG
+    chown -R ubuntu:ubuntu /home/ubuntu/.config
+    systemctl enable --now code-server@ubuntu
   EOF
   tags = {
      Name = "Ubuntu-EC2-student${count.index + 1}"

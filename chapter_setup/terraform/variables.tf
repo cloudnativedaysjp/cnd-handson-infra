@@ -54,7 +54,7 @@ variable "stage_name" {
 variable "handson_ingress_ports" {
   description = "List of ingress ports to allow"
   type        = list(number)
-  default     = [22, 80, 443, 8080, 8443, 18080, 18443, 28080, 28443]
+  default     = [22, 80, 443, 8080, 8443, 18080, 18443, 28080, 28443, 38080, 38443]
 }
 
 variable "ami_name" {

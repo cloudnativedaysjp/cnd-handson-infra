@@ -171,19 +171,18 @@ resource "aws_instance" "ubuntu_instance" {
     groupadd docker || true
     usermod -aG docker ubuntu
     cd /home/ubuntu
-    export HOME=/home/ubuntu
     git clone https://github.com/cloudnativedaysjp/cnd-handson.git
     git clone https://github.com/cloudnativedaysjp/cnd-handson-app.git
     git clone https://github.com/cloudnativedaysjp/cnd-handson-infra.git
     chown -R ubuntu:ubuntu /home/ubuntu
     echo "ubuntu user groups after usermod:" >> /var/log/user_data_debug.log
     groups ubuntu >> /var/log/user_data_debug.log
-    curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/usr/local
+    curl -fsSL https://code-server.dev/install.sh | sh
     mkdir -p /home/ubuntu/.config/code-server
     cat > /home/ubuntu/.config/code-server/config.yaml <<'CONFIG'
     bind-addr: 0.0.0.0:38080
     auth: password
-    password: password
+    password: student${count.index + 1}
     cert: false
     CONFIG
     chown -R ubuntu:ubuntu /home/ubuntu/.config

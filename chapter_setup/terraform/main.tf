@@ -180,7 +180,7 @@ resource "aws_instance" "ubuntu_instance" {
     curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/usr/local
     mkdir -p /home/ubuntu/.config/code-server
     cat > /home/ubuntu/.config/code-server/config.yaml <<'CONFIG'
-    bind-addr: 0.0.0.0:8080
+    bind-addr: 0.0.0.0:38080
     auth: password
     password: password
     cert: false

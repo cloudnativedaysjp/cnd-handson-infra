@@ -185,9 +185,9 @@ resource "aws_instance" "ubuntu_instance" {
     password: student${count.index + 1}
     cert: false
     CONFIG
-    systemctl enable --now code-server@ubuntu
     HOME=/home/ubuntu code-server --install-extension redhat.vscode-yaml
     chown -R ubuntu:ubuntu /home/ubuntu
+    systemctl enable --now code-server@ubuntu
   EOF
   tags = {
      Name = "Ubuntu-EC2-student${count.index + 1}"

@@ -174,7 +174,6 @@ resource "aws_instance" "ubuntu_instance" {
     git clone https://github.com/cloudnativedaysjp/cnd-handson.git
     git clone https://github.com/cloudnativedaysjp/cnd-handson-app.git
     git clone https://github.com/cloudnativedaysjp/cnd-handson-infra.git
-    chown -R ubuntu:ubuntu /home/ubuntu
     echo "ubuntu user groups after usermod:" >> /var/log/user_data_debug.log
     groups ubuntu >> /var/log/user_data_debug.log
     curl -fsSL https://code-server.dev/install.sh -o /tmp/install-code-server.sh
@@ -186,8 +185,9 @@ resource "aws_instance" "ubuntu_instance" {
     password: student${count.index + 1}
     cert: false
     CONFIG
-    chown -R ubuntu:ubuntu /home/ubuntu/.config
     systemctl enable --now code-server@ubuntu
+    HOME=/home/ubuntu code-server --install-extension redhat.vscode-yaml
+    chown -R ubuntu:ubuntu /home/ubuntu
   EOF
   tags = {
      Name = "Ubuntu-EC2-student${count.index + 1}"

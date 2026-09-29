@@ -15,7 +15,7 @@ provider "aws" {
 
 locals {
   download_url_rows = [
-    for i in range(var.num_students) : 
+    for i in range(var.num_students) :
     join(",", [
       "student${i + 1}",
       "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=keys/student${i + 1}.pem",
@@ -31,27 +31,27 @@ locals {
 
 # ハンズオン用VPC
 resource "aws_vpc" "handson_vpc" {
-  cidr_block = var.vpc_cidr_block
-  enable_dns_support = true
+  cidr_block           = var.vpc_cidr_block
+  enable_dns_support   = true
   enable_dns_hostnames = true
-  tags = { Name = "handson-vpc" }
+  tags                 = { Name = "handson-vpc" }
 }
 
 data "aws_availability_zones" "available" {}
 
 # サブネット
 resource "aws_subnet" "handson_subnet" {
-  vpc_id = aws_vpc.handson_vpc.id
-  cidr_block = var.vpc_cidr_block
+  vpc_id                  = aws_vpc.handson_vpc.id
+  cidr_block              = var.vpc_cidr_block
   map_public_ip_on_launch = true
-  availability_zone = element(data.aws_availability_zones.available.names, var.az_index)
-  tags = { Name = "handson-subnet" }
+  availability_zone       = element(data.aws_availability_zones.available.names, var.az_index)
+  tags                    = { Name = "handson-subnet" }
 }
 
 # インターネットゲートウェイ
 resource "aws_internet_gateway" "handson_gw" {
   vpc_id = aws_vpc.handson_vpc.id
-  tags = { Name = "handson-gw" }
+  tags   = { Name = "handson-gw" }
 }
 
 # ルートテーブル
@@ -65,14 +65,14 @@ resource "aws_route_table" "handson_rt" {
 
 # ルートテーブルの関連付け
 resource "aws_route_table_association" "handson_rt_assoc" {
-  subnet_id = aws_subnet.handson_subnet.id
+  subnet_id      = aws_subnet.handson_subnet.id
   route_table_id = aws_route_table.handson_rt.id
 }
 
 # セキュリティグループ 
 resource "aws_security_group" "handson_sg" {
   vpc_id = aws_vpc.handson_vpc.id
-  name = "handson-sg"
+  name   = "handson-sg"
 }
 
 locals {
@@ -130,7 +130,7 @@ resource "local_file" "private_key" {
 
 data "aws_ami" "latest_ubuntu" {
   most_recent = true
-  owners      = ["099720109477"]  # UbuntuのAMIオーナーID
+  owners      = ["099720109477"] # UbuntuのAMIオーナーID
   filter {
     name   = "name"
     values = [var.ami_name]
@@ -152,8 +152,8 @@ resource "aws_instance" "ubuntu_instance" {
   associate_public_ip_address = true
 
   root_block_device {
-    volume_size = var.volume_size
-    volume_type = "gp3"
+    volume_size           = var.volume_size
+    volume_type           = "gp3"
     delete_on_termination = true
   }
 
@@ -178,19 +178,46 @@ resource "aws_instance" "ubuntu_instance" {
     groups ubuntu >> /var/log/user_data_debug.log
     curl -fsSL https://code-server.dev/install.sh -o /tmp/install-code-server.sh
     HOME=/home/ubuntu sh /tmp/install-code-server.sh
-    mkdir -p /home/ubuntu/.config/code-server
-    cat > /home/ubuntu/.config/code-server/config.yaml <<'CONFIG'
-    bind-addr: 0.0.0.0:38080
-    auth: password
-    password: student${count.index + 1}
-    cert: false
-    CONFIG
-    HOME=/home/ubuntu code-server --install-extension redhat.vscode-yaml
+    # kp2 starts code-server with this user-data-dir, so extensions have to be installed there
+    HOME=/home/ubuntu code-server --user-data-dir /home/ubuntu/.local/share/kp2/code-server --install-extension redhat.vscode-yaml
     chown -R ubuntu:ubuntu /home/ubuntu
-    systemctl enable --now code-server@ubuntu
+    curl -fsSL -o /usr/local/bin/kp2 https://github.com/cloudnativedaysjp/cnd-handson-infra/releases/latest/download/kp2-linux-amd64
+    chmod +x /usr/local/bin/kp2
+    # ponytail: public IP is captured once; a stop/start changes it, so re-run this or attach an EIP if that matters
+    IMDS_TOKEN=$(curl -fsS -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+    PUBLIC_IP=$(curl -fsS -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)
+    cat > /etc/systemd/system/kp2.service <<UNIT
+    [Unit]
+    After=network-online.target
+    [Service]
+    User=ubuntu
+    WorkingDirectory=/home/ubuntu
+    ExecStart=/usr/local/bin/kp2 --docs /home/ubuntu/cnd-handson --workspace /home/ubuntu --allowed-origin http://$PUBLIC_IP:38080 --editor-url /code/
+    Restart=always
+    [Install]
+    WantedBy=multi-user.target
+    UNIT
+    systemctl daemon-reload
+    systemctl enable --now kp2
+    curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt | tee /etc/apt/sources.list.d/caddy-stable.list > /dev/null
+    apt-get update
+    apt-get install -y caddy
+    cat > /etc/caddy/Caddyfile <<CADDY
+    :38080 {
+      basic_auth {
+        student${count.index + 1} $(caddy hash-password --plaintext student${count.index + 1})
+      }
+      handle_path /code/* {
+        reverse_proxy 127.0.0.1:7682
+      }
+      reverse_proxy 127.0.0.1:5173
+    }
+    CADDY
+    systemctl restart caddy
   EOF
   tags = {
-     Name = "Ubuntu-EC2-student${count.index + 1}"
+    Name = "Ubuntu-EC2-student${count.index + 1}"
   }
 }
 
@@ -201,7 +228,7 @@ resource "null_resource" "generate_hosts" {
 
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
-    command = <<EOT
+    command     = <<EOT
       mkdir -p ./generated_hosts
 
       vm_ip="${aws_instance.ubuntu_instance[count.index].public_ip}"
@@ -221,24 +248,24 @@ resource "null_resource" "generate_hosts" {
 # Lambda関数コードをZIP化
 resource "archive_file" "lambda_code_zip" {
   type        = "zip"
-  source_file = "scripts/generate_download_url.py"  # ローカルのLambdaコード
-  output_path = "${path.module}/generate_download_url.zip"  # ZIP化されたファイルの保存場所
+  source_file = "scripts/generate_download_url.py"         # ローカルのLambdaコード
+  output_path = "${path.module}/generate_download_url.zip" # ZIP化されたファイルの保存場所
 }
 
 # Lambda関数用のIAMロールを作成
 resource "aws_iam_role" "lambda_exec_role" {
   name = "lambda-exec-role"
-  
+
   assume_role_policy = jsonencode({
-    Version       = "2012-10-17",
+    Version = "2012-10-17",
     Statement = [
       {
-        Action    = "sts:AssumeRole",
+        Action = "sts:AssumeRole",
         Principal = {
           Service = "lambda.amazonaws.com"
         },
-        Effect    = "Allow",
-        Sid       = ""
+        Effect = "Allow",
+        Sid    = ""
       }
     ]
   })
@@ -246,11 +273,11 @@ resource "aws_iam_role" "lambda_exec_role" {
 
 # Lambda関数を作成
 resource "aws_lambda_function" "generate_download_url_lambda" {
-  filename         = archive_file.lambda_code_zip.output_path
-  function_name    = "GenerateSignedUrl"
-  role             = aws_iam_role.lambda_exec_role.arn
-  handler          = "generate_download_url.lambda_handler"
-  runtime          = "python3.8"
+  filename      = archive_file.lambda_code_zip.output_path
+  function_name = "GenerateSignedUrl"
+  role          = aws_iam_role.lambda_exec_role.arn
+  handler       = "generate_download_url.lambda_handler"
+  runtime       = "python3.8"
 
   environment {
     variables = {
@@ -258,9 +285,9 @@ resource "aws_lambda_function" "generate_download_url_lambda" {
     }
   }
   depends_on = [
-  archive_file.lambda_code_zip,
-  aws_iam_role.lambda_exec_role
-]
+    archive_file.lambda_code_zip,
+    aws_iam_role.lambda_exec_role
+  ]
 
 }
 
@@ -268,7 +295,7 @@ resource "aws_lambda_function" "generate_download_url_lambda" {
 resource "aws_iam_policy" "lambda_s3_access_policy" {
   name        = "lambda-s3-access-policy"
   description = "Allow Lambda function to get objects from S3"
-  policy      = jsonencode({
+  policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
@@ -311,7 +338,7 @@ resource "aws_iam_role_policy_attachment" "lambda_s3_access_policy_attachment" {
 resource "aws_iam_policy" "lambda_cloudwatch_policy" {
   name        = "lambda-cloudwatch-logs-policy"
   description = "Allow Lambda function to write logs to CloudWatch"
-  policy      = jsonencode({
+  policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
@@ -339,20 +366,20 @@ resource "aws_s3_bucket" "handson_bucket" {
 
 # S3バケットにSSH鍵をアップロード
 resource "aws_s3_object" "ssh_key" {
-  count    = var.num_students
-  bucket   = aws_s3_bucket.handson_bucket.bucket
-  key      = "keys/student${count.index + 1}.pem"
-  content  = tls_private_key.handson_keys[count.index].private_key_pem
-  acl      = "private"
+  count   = var.num_students
+  bucket  = aws_s3_bucket.handson_bucket.bucket
+  key     = "keys/student${count.index + 1}.pem"
+  content = tls_private_key.handson_keys[count.index].private_key_pem
+  acl     = "private"
 }
 
 # S3バケットにhostsをアップロード
 resource "aws_s3_object" "hosts_file" {
-  count   = var.num_students
-  bucket  = aws_s3_bucket.handson_bucket.bucket
-  key     = "student${count.index + 1}/hosts.txt"
-  source  = "${path.module}/generated_hosts/hosts_student${count.index + 1}.txt"
-  acl     = "private"
+  count      = var.num_students
+  bucket     = aws_s3_bucket.handson_bucket.bucket
+  key        = "student${count.index + 1}/hosts.txt"
+  source     = "${path.module}/generated_hosts/hosts_student${count.index + 1}.txt"
+  acl        = "private"
   depends_on = [null_resource.generate_hosts]
 }
 
@@ -382,9 +409,9 @@ resource "aws_api_gateway_method" "get_download_url" {
 }
 
 resource "aws_api_gateway_integration" "lambda_integration" {
-  rest_api_id = aws_api_gateway_rest_api.download_url_api.id
-  resource_id = aws_api_gateway_resource.download_url_resource.id
-  http_method = aws_api_gateway_method.get_download_url.http_method
+  rest_api_id             = aws_api_gateway_rest_api.download_url_api.id
+  resource_id             = aws_api_gateway_resource.download_url_resource.id
+  http_method             = aws_api_gateway_method.get_download_url.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:${var.region}:lambda:path/2015-03-31/functions/${aws_lambda_function.generate_download_url_lambda.arn}/invocations"

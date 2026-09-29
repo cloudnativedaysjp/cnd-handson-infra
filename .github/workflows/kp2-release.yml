@@ -1,0 +1,47 @@
+name: kp2 release
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: kp2 repository to build
+        default: saku3/kp2
+      ref:
+        description: Branch, tag or commit of kp2
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # Match the hands-on AMI (Ubuntu 24.04, x86_64) so the binary links against the same glibc
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
+
+      - run: npm ci && npm run build
+
+      - run: server/target/release/kp2 --help
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE: ${{ inputs.repository }}@${{ inputs.ref }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          cp server/target/release/kp2 kp2-linux-amd64
+          gh release create "kp2-${sha:0:12}" kp2-linux-amd64 \
+            --target "${{ github.sha }}" \
+            --title "kp2 ${sha:0:12}" \
+            --notes "Built from ${SOURCE} (${sha})"

@@ -68,3 +68,9 @@ variable "volume_size" {
   type        = number
   default     = 50
 }
+
+variable "create_instances" {
+  description = "false にすると VM と A レコードを作らず、証明書と鍵だけを用意する"
+  type        = bool
+  default     = true
+}

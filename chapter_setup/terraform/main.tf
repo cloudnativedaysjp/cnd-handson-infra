@@ -7,6 +7,13 @@ terraform {
       name = "cnd-handson-infra"
     }
   }
+
+  required_providers {
+    acme = {
+      source  = "vancluever/acme"
+      version = "~> 2.0"
+    }
+  }
 }
 
 provider "aws" {
@@ -27,6 +34,10 @@ locals {
     ["student,pem_url,hosts_url"],
     local.download_url_rows
   ))
+}
+
+locals {
+  num_vms = var.create_instances ? var.num_students : 0
 }
 
 # ハンズオン用VPC
@@ -143,7 +154,7 @@ data "aws_ami" "latest_ubuntu" {
 
 # 受講者用 EC2 インスタンス
 resource "aws_instance" "ubuntu_instance" {
-  count                       = var.num_students
+  count                       = local.num_vms
   ami                         = data.aws_ami.latest_ubuntu.id
   instance_type               = var.instance_type
   key_name                    = aws_key_pair.handson_keys[count.index].key_name
@@ -183,16 +194,17 @@ resource "aws_instance" "ubuntu_instance" {
     chown -R ubuntu:ubuntu /home/ubuntu
     curl -fsSL -o /usr/local/bin/kp2 https://github.com/cloudnativedaysjp/cnd-handson-infra/releases/latest/download/kp2-linux-amd64
     chmod +x /usr/local/bin/kp2
-    # ponytail: public IP is captured once; a stop/start changes it, so re-run this or attach an EIP if that matters
-    IMDS_TOKEN=$(curl -fsS -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
-    PUBLIC_IP=$(curl -fsS -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)
+    KP2_HOST=kp2.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp
+    mkdir -p /etc/handson-tls
+    echo '${base64encode("${acme_certificate.vm[count.index].certificate_pem}${acme_certificate.vm[count.index].issuer_pem}")}' | base64 -d > /etc/handson-tls/tls.crt
+    echo '${base64encode(acme_certificate.vm[count.index].private_key_pem)}' | base64 -d > /etc/handson-tls/tls.key
     cat > /etc/systemd/system/kp2.service <<UNIT
     [Unit]
     After=network-online.target
     [Service]
     User=ubuntu
     WorkingDirectory=/home/ubuntu
-    ExecStart=/usr/local/bin/kp2 --docs /home/ubuntu/cnd-handson --workspace /home/ubuntu --allowed-origin http://$PUBLIC_IP:38080 --editor-url /code/
+    ExecStart=/usr/local/bin/kp2 --docs /home/ubuntu/cnd-handson --workspace /home/ubuntu --allowed-origin https://$KP2_HOST:38443 --editor-url /code/
     Restart=always
     [Install]
     WantedBy=multi-user.target
@@ -204,7 +216,12 @@ resource "aws_instance" "ubuntu_instance" {
     apt-get update
     apt-get install -y caddy
     cat > /etc/caddy/Caddyfile <<CADDY
-    :38080 {
+    {
+      # kind uses host port 80, so Caddy must not bind it for HTTP->HTTPS redirects
+      auto_https disable_redirects
+    }
+    $KP2_HOST:38443 {
+      tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
       basic_auth {
         student${count.index + 1} $(caddy hash-password --plaintext student${count.index + 1})
       }
@@ -214,6 +231,8 @@ resource "aws_instance" "ubuntu_instance" {
       reverse_proxy 127.0.0.1:5173
     }
     CADDY
+    chown -R caddy:caddy /etc/handson-tls
+    chmod 600 /etc/handson-tls/tls.key
     systemctl restart caddy
   EOF
   tags = {
@@ -375,7 +394,7 @@ resource "aws_s3_object" "ssh_key" {
 
 # S3バケットにhostsをアップロード
 resource "aws_s3_object" "hosts_file" {
-  count      = var.num_students
+  count      = local.num_vms
   bucket     = aws_s3_bucket.handson_bucket.bucket
   key        = "student${count.index + 1}/hosts.txt"
   source     = "${path.module}/generated_hosts/hosts_student${count.index + 1}.txt"

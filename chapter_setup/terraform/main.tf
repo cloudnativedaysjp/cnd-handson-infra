@@ -26,12 +26,13 @@ locals {
     join(",", [
       "student${i + 1}",
       "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=keys/student${i + 1}.pem",
-      "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=student${i + 1}/hosts.txt"
+      "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=student${i + 1}/hosts.txt",
+      "https://kp2.vm${format("%02d", i + 1)}.handson.cloudnativedays.jp/"
     ])
   ]
 
   download_url_csv = join("\n", concat(
-    ["student,pem_url,hosts_url"],
+    ["student,pem_url,hosts_url,kp2_url"],
     local.download_url_rows
   ))
 }
@@ -196,15 +197,18 @@ resource "aws_instance" "ubuntu_instance" {
     chmod +x /usr/local/bin/kp2
     KP2_HOST=kp2.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp
     mkdir -p /etc/handson-tls
+    # keep the private key out of the xtrace in cloud-init-output.log
+    set +x
     echo '${base64encode("${acme_certificate.vm[count.index].certificate_pem}${acme_certificate.vm[count.index].issuer_pem}")}' | base64 -d > /etc/handson-tls/tls.crt
-    echo '${base64encode(acme_certificate.vm[count.index].private_key_pem)}' | base64 -d > /etc/handson-tls/tls.key
+    (umask 077; echo '${base64encode(acme_certificate.vm[count.index].private_key_pem)}' | base64 -d > /etc/handson-tls/tls.key)
+    set -x
     cat > /etc/systemd/system/kp2.service <<UNIT
     [Unit]
     After=network-online.target
     [Service]
     User=ubuntu
     WorkingDirectory=/home/ubuntu
-    ExecStart=/usr/local/bin/kp2 --docs /home/ubuntu/cnd-handson --workspace /home/ubuntu --allowed-origin https://$KP2_HOST:38443 --editor-url /code/
+    ExecStart=/usr/local/bin/kp2 --docs /home/ubuntu/cnd-handson --workspace /home/ubuntu --allowed-origin https://$KP2_HOST --editor-url /code/
     Restart=always
     [Install]
     WantedBy=multi-user.target
@@ -220,7 +224,7 @@ resource "aws_instance" "ubuntu_instance" {
       # kind uses host port 80, so Caddy must not bind it for HTTP->HTTPS redirects
       auto_https disable_redirects
     }
-    $KP2_HOST:38443 {
+    $KP2_HOST:443 {
       tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
       basic_auth {
         student${count.index + 1} $(caddy hash-password --plaintext student${count.index + 1})
@@ -230,9 +234,12 @@ resource "aws_instance" "ubuntu_instance" {
       }
       reverse_proxy 127.0.0.1:5173
     }
+    *.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp:443 {
+      tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
+      reverse_proxy 127.0.0.1:80
+    }
     CADDY
     chown -R caddy:caddy /etc/handson-tls
-    chmod 600 /etc/handson-tls/tls.key
     systemctl restart caddy
   EOF
   tags = {

@@ -12,16 +12,13 @@ resource "acme_registration" "handson" {
 }
 
 # Let's Encrypt の発行上限は同じ登録ドメインで週 50 枚。1 VM に 1 枚へまとめる
+# サブドメインは 1 段にそろえる前提なので、ワイルドカードは 1 つで足りる (cnd-handson#594)
 resource "acme_certificate" "vm" {
   count = var.num_students
 
   account_key_pem = acme_registration.handson.account_key_pem
   key_type        = "P256"
   common_name     = "*.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp"
-  subject_alternative_names = [
-    for sub in ["argocd", "kustomize.argocd", "cilium", "cicd"] :
-    "*.${sub}.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp"
-  ]
 
   dns_challenge {
     provider = "route53"

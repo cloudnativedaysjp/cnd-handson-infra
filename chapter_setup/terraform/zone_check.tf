@@ -15,3 +15,18 @@ output "route53_zones" {
     }
   }
 }
+
+data "aws_route53_records" "delegated" {
+  zone_id = "Z080738624DO48AUL6TRM"
+}
+
+output "delegated_zone_records" {
+  value = [
+    for r in data.aws_route53_records.delegated.resource_record_sets : {
+      name    = r.name
+      type    = r.type
+      ttl     = r.ttl
+      records = [for v in r.resource_records : v.value]
+    }
+  ]
+}

@@ -54,7 +54,7 @@ variable "stage_name" {
 variable "handson_ingress_ports" {
   description = "List of ingress ports to allow"
   type        = list(number)
-  default     = [22, 80, 443, 8080, 8443, 18080, 18443, 28080, 28443, 38080, 38443]
+  default     = [22, 80, 443, 8080, 8443, 18080, 18443, 28080, 28443]
 }
 
 variable "ami_name" {
@@ -67,4 +67,10 @@ variable "volume_size" {
   description = "volume size for Handson Instances"
   type        = number
   default     = 50
+}
+
+variable "create_instances" {
+  description = "false にすると VM と A レコードを作らず、証明書と鍵だけを用意する"
+  type        = bool
+  default     = true
 }

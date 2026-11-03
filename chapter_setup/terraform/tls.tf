@@ -22,8 +22,10 @@ resource "acme_certificate" "vm" {
 
   dns_challenge {
     provider = "route53"
+    # the aws provider's region does not reach the solver, and STS for dynamic credentials needs one
     config = {
       AWS_HOSTED_ZONE_ID = aws_route53_zone.handson.zone_id
+      AWS_REGION         = var.region
     }
   }
 }

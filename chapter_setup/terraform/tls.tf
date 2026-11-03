@@ -26,6 +26,9 @@ resource "acme_certificate" "vm" {
     config = {
       AWS_HOSTED_ZONE_ID = aws_route53_zone.handson.zone_id
       AWS_REGION         = var.region
+      # Route53 can stay PENDING past lego's 2-minute default
+      AWS_PROPAGATION_TIMEOUT = "600"
+      AWS_POLLING_INTERVAL    = "10"
     }
   }
 }

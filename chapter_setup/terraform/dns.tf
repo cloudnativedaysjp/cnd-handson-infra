@@ -4,11 +4,11 @@ import {
   id = "Z080738624DO48AUL6TRM"
 }
 
-# 空のゾーンは消さずに state から外す。失敗した ACME の TXT が残っていると削除に失敗するため
+# 委譲されていない空のゾーンは消す。中身は SOA と NS だけ
 removed {
   from = aws_route53_zone.handson
   lifecycle {
-    destroy = false
+    destroy = true
   }
 }
 

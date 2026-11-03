@@ -19,6 +19,8 @@ resource "acme_certificate" "vm" {
   account_key_pem = acme_registration.handson.account_key_pem
   key_type        = "P256"
   common_name     = "*.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp"
+  # kp2 は apex で開く。ワイルドカードは apex に一致しない
+  subject_alternative_names = ["vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp"]
 
   dns_challenge {
     provider = "route53"

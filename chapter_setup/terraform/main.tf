@@ -27,7 +27,7 @@ locals {
       "student${i + 1}",
       "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=keys/student${i + 1}.pem",
       "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=student${i + 1}/hosts.txt",
-      "https://kp2.vm${format("%02d", i + 1)}.handson.cloudnativedays.jp/"
+      "https://vm${format("%02d", i + 1)}.handson.cloudnativedays.jp/"
     ])
   ]
 
@@ -195,7 +195,7 @@ resource "aws_instance" "ubuntu_instance" {
     chown -R ubuntu:ubuntu /home/ubuntu
     curl -fsSL -o /usr/local/bin/kp2 https://github.com/cloudnativedaysjp/cnd-handson-infra/releases/latest/download/kp2-linux-amd64
     chmod +x /usr/local/bin/kp2
-    KP2_HOST=kp2.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp
+    KP2_HOST=vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp
     mkdir -p /etc/handson-tls
     # keep the private key out of the xtrace in cloud-init-output.log
     set +x

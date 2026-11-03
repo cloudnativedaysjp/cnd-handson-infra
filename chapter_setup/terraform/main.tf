@@ -234,6 +234,11 @@ resource "aws_instance" "ubuntu_instance" {
       }
       reverse_proxy 127.0.0.1:5173
     }
+    # the Istio chapter goes through its own ingress gateway, not Envoy Gateway on port 80
+    istio-app.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp:443 {
+      tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
+      reverse_proxy 127.0.0.1:18080
+    }
     *.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp:443 {
       tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
       reverse_proxy 127.0.0.1:80

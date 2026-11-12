@@ -239,6 +239,16 @@ resource "aws_instance" "ubuntu_instance" {
       tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
       reverse_proxy 127.0.0.1:18080
     }
+    # the Cilium chapter's Ingress demo listens on Cilium's own ingress port
+    app-cilium.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp:443 {
+      tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
+      reverse_proxy 127.0.0.1:8080
+    }
+    # the ambient chapter runs a separate kind cluster that maps Kiali to port 28080
+    kiali-ambient.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp:443 {
+      tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
+      reverse_proxy 127.0.0.1:28080
+    }
     *.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp:443 {
       tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
       reverse_proxy 127.0.0.1:80

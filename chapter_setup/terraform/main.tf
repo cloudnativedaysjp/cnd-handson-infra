@@ -24,9 +24,9 @@ locals {
   download_url_rows = [
     for i in range(var.num_students) :
     join(",", [
-      "student${i + 1}",
-      "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=keys/student${i + 1}.pem",
-      "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=student${i + 1}/hosts.txt",
+      "student${format("%02d", i + 1)}",
+      "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=keys/student${format("%02d", i + 1)}.pem",
+      "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=student${format("%02d", i + 1)}/hosts.txt",
       "https://vm${format("%02d", i + 1)}.handson.cloudnativedays.jp/"
     ])
   ]
@@ -137,7 +137,7 @@ resource "null_resource" "create_keys_dir" {
 resource "local_file" "private_key" {
   count    = var.num_students
   content  = tls_private_key.handson_keys[count.index].private_key_pem
-  filename = "${path.module}/keys/student${count.index + 1}.pem"
+  filename = "${path.module}/keys/student${format("%02d", count.index + 1)}.pem"
 }
 
 data "aws_ami" "latest_ubuntu" {
@@ -227,7 +227,7 @@ resource "aws_instance" "ubuntu_instance" {
     $KP2_HOST:443 {
       tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
       basic_auth {
-        student${count.index + 1} $(caddy hash-password --plaintext student${count.index + 1})
+        student${format("%02d", count.index + 1)} $(caddy hash-password --plaintext student${format("%02d", count.index + 1)})
       }
       handle_path /code/* {
         reverse_proxy 127.0.0.1:7682
@@ -258,7 +258,7 @@ resource "aws_instance" "ubuntu_instance" {
     systemctl restart caddy
   EOF
   tags = {
-    Name = "Ubuntu-EC2-student${count.index + 1}"
+    Name = "Ubuntu-EC2-student${format("%02d", count.index + 1)}"
   }
 }
 
@@ -273,7 +273,7 @@ resource "null_resource" "generate_hosts" {
       mkdir -p ./generated_hosts
 
       vm_ip="${aws_instance.ubuntu_instance[count.index].public_ip}"
-      output_file="./generated_hosts/hosts_student${count.index + 1}.txt"
+      output_file="./generated_hosts/hosts_student${format("%02d", count.index + 1)}.txt"
 
       > "$output_file"
 
@@ -409,7 +409,7 @@ resource "aws_s3_bucket" "handson_bucket" {
 resource "aws_s3_object" "ssh_key" {
   count   = var.num_students
   bucket  = aws_s3_bucket.handson_bucket.bucket
-  key     = "keys/student${count.index + 1}.pem"
+  key     = "keys/student${format("%02d", count.index + 1)}.pem"
   content = tls_private_key.handson_keys[count.index].private_key_pem
   acl     = "private"
 }
@@ -418,8 +418,8 @@ resource "aws_s3_object" "ssh_key" {
 resource "aws_s3_object" "hosts_file" {
   count      = local.num_vms
   bucket     = aws_s3_bucket.handson_bucket.bucket
-  key        = "student${count.index + 1}/hosts.txt"
-  source     = "${path.module}/generated_hosts/hosts_student${count.index + 1}.txt"
+  key        = "student${format("%02d", count.index + 1)}/hosts.txt"
+  source     = "${path.module}/generated_hosts/hosts_student${format("%02d", count.index + 1)}.txt"
   acl        = "private"
   depends_on = [null_resource.generate_hosts]
 }

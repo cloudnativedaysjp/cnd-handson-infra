@@ -182,10 +182,13 @@ resource "aws_instance" "ubuntu_instance" {
     apt-get install -y docker-ce docker-ce-cli containerd.io
     groupadd docker || true
     usermod -aG docker ubuntu
+    KP2_HOST=vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp
     cd /home/ubuntu
     git clone https://github.com/cloudnativedaysjp/cnd-handson.git
     git clone https://github.com/cloudnativedaysjp/cnd-handson-app.git
     git clone https://github.com/cloudnativedaysjp/cnd-handson-infra.git
+    # only hostnames: demo@example.com is the app's real login
+    (cd cnd-handson && git grep -lzI '\.example\.com' | xargs -0 -r perl -pi -e "s/\.example\.com/.$KP2_HOST/g")
     echo "ubuntu user groups after usermod:" >> /var/log/user_data_debug.log
     groups ubuntu >> /var/log/user_data_debug.log
     curl -fsSL https://code-server.dev/install.sh -o /tmp/install-code-server.sh
@@ -195,7 +198,6 @@ resource "aws_instance" "ubuntu_instance" {
     chown -R ubuntu:ubuntu /home/ubuntu
     curl -fsSL -o /usr/local/bin/kp2 https://github.com/cloudnativedaysjp/cnd-handson-infra/releases/latest/download/kp2-linux-amd64
     chmod +x /usr/local/bin/kp2
-    KP2_HOST=vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp
     mkdir -p /etc/handson-tls
     # keep the private key out of the xtrace in cloud-init-output.log
     set +x

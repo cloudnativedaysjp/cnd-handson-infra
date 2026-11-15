@@ -27,7 +27,7 @@ locals {
       "student${format("%02d", i + 1)}",
       "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=keys/student${format("%02d", i + 1)}.pem",
       "https://${aws_api_gateway_rest_api.download_url_api.id}.execute-api.${var.region}.amazonaws.com/${var.stage_name}/generate_url?key=student${format("%02d", i + 1)}/hosts.txt",
-      "https://vm${format("%02d", i + 1)}.handson.cloudnativedays.jp/"
+      "https://vm${format("%02d", i + 1)}.handson.cloudnativedays.jp/?token=${random_string.kp2_token[i].result}"
     ])
   ]
 
@@ -111,6 +111,14 @@ resource "aws_security_group_rule" "handson_egress_all" {
   protocol          = "-1" # all protocols
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.handson_sg.id
+}
+
+# kp2 のログイン用リンクに付ける token
+# random_password だと sensitive になり、配布に使う download_url_csv_raw が見えなくなる
+resource "random_string" "kp2_token" {
+  count   = var.num_students
+  length  = 32
+  special = false
 }
 
 # 受講者ごとのSSHキーペアを作成
@@ -226,13 +234,20 @@ resource "aws_instance" "ubuntu_instance" {
     }
     $KP2_HOST:443 {
       tls /etc/handson-tls/tls.crt /etc/handson-tls/tls.key
-      basic_auth {
-        student${format("%02d", count.index + 1)} $(caddy hash-password --plaintext student${format("%02d", count.index + 1)})
+      route {
+        # the login link sets the cookie and drops the token from the address bar
+        @login query token=${random_string.kp2_token[count.index].result}
+        handle @login {
+          header Set-Cookie "kp2_token=${random_string.kp2_token[count.index].result}; Path=/; Max-Age=604800; HttpOnly; Secure; SameSite=Lax"
+          redir * / 302
+        }
+        @noauth not header Cookie *kp2_token=${random_string.kp2_token[count.index].result}*
+        respond @noauth "Open the kp2 URL you were given" 401
+        handle_path /code/* {
+          reverse_proxy 127.0.0.1:7682
+        }
+        reverse_proxy 127.0.0.1:5173
       }
-      handle_path /code/* {
-        reverse_proxy 127.0.0.1:7682
-      }
-      reverse_proxy 127.0.0.1:5173
     }
     # the Istio chapter goes through its own ingress gateway, not Envoy Gateway on port 80
     istio-app.vm${format("%02d", count.index + 1)}.handson.cloudnativedays.jp:443 {

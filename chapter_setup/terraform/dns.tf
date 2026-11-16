@@ -1,17 +1,3 @@
-# 親ゾーンが委譲しているのは以前から使っているゾーン。state にあった空のゾーンは委譲されていない
-import {
-  to = aws_route53_zone.delegated
-  id = "Z080738624DO48AUL6TRM"
-}
-
-# 委譲されていない空のゾーンは消す。中身は SOA と NS だけ
-removed {
-  from = aws_route53_zone.handson
-  lifecycle {
-    destroy = true
-  }
-}
-
 resource "aws_route53_zone" "delegated" {
   name = "handson.cloudnativedays.jp"
 }

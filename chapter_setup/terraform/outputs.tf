@@ -17,14 +17,14 @@ output "ec2_instance_names" {
 output "private_key_s3_urls" {
   value = [
     for i in range(var.num_students) :
-    "s3://${aws_s3_bucket.handson_bucket.bucket}/keys/student${i + 1}.pem"
+    "s3://${aws_s3_bucket.handson_bucket.bucket}/keys/student${format("%02d", i + 1)}.pem"
   ]
 }
 
 output "hosts_file_s3_urls" {
   value = [
     for i in range(var.num_students) :
-    "s3://${aws_s3_bucket.handson_bucket.bucket}/student${i + 1}/hosts.txt"
+    "s3://${aws_s3_bucket.handson_bucket.bucket}/student${format("%02d", i + 1)}/hosts.txt"
   ]
 }
 
